@@ -1,0 +1,14 @@
+# Vault settings. Add every project name you use with --project.
+
+[projects]
+names = ["example", "meta", "personal"]
+
+[directories]
+feedback = "meta"
+rules = "meta"
+reference = "meta"
+_moc = "meta"
+
+[layers]
+hot = 2
+warm = 7

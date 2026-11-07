@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Generated indexes (rebuild with index_builder)
+**/index/*.json
+**/layers/*.json
+
+# Obsidian
+.obsidian/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Environment
+.env
+.venv/
+env/
+venv/
+
+# Generated full-text index (rebuild with index_builder)
+**/index/*.db
+**/index/*.db.tmp
+
+# Your private memory and its runtime state never go in the repo
+my-vault/
+**/index/checkpoints/
+**/index/*.jsonl
+**/session-archive/
+**/index/*.lock

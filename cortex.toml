@@ -1,0 +1,37 @@
+# Cortex Configuration
+# Copy this file to your vault root and customize.
+
+[vault]
+path = "my-vault"
+# Path to the vault root. Default: parent of the cortex/ package directory.
+# Can also be set via CORTEX_VAULT environment variable.
+# path = "/path/to/your/vault"
+
+[projects]
+# Valid project names for atom_writer validation.
+# Customize with your own project names.
+names = ["default"]
+
+[directories]
+# Map directory names to project names for auto-inference.
+# When an atom lives in a directory named "research/", it gets
+# assigned to project "research" automatically.
+feedback = "meta"
+rules = "meta"
+reference = "meta"
+_moc = "meta"
+
+[tags]
+# Keyword-to-tag mapping for auto-tagging during migration.
+# Each key is a tag name; value is a list of keywords that trigger it.
+deploy = ["deploy", "commit", "push", "restart"]
+risk = ["risk", "loss", "drawdown", "halt"]
+bug = ["bug", "fix", "error", "broken"]
+
+[layers]
+# Temporal layer thresholds in days.
+# hot = atoms updated within this many days (full priority)
+# warm = atoms updated within this many days (medium priority)
+# Everything older is "cold" (low priority)
+hot = 2
+warm = 7
