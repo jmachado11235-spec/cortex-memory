@@ -14,4 +14,4 @@ Current state: [state/projects/example.md](../state/projects/example.md)
 
 ## Notes
 
-<!-- Add one link per new note, e.g. - [Portal login loop fixed](../incidents/portal_login_loop_fixed.md) -->
+<!-- Add one markdown link per new note, pointing to its file in atoms, incidents, insights or reference. -->
