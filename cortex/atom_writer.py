@@ -22,6 +22,9 @@ from cortex.config import get_vault_path, get_valid_projects, get_valid_types, g
 VAULT = get_vault_path()
 VALID_TYPES = get_valid_types()
 VALID_STATUSES = get_valid_statuses()
+# The limits the write protocol states; cortex.health reports notes over them.
+DESCRIPTION_LIMIT = 160
+EVENT_BODY_WORDS = 200
 
 
 def slugify(text: str) -> str:
@@ -102,6 +105,11 @@ def create_atom(name: str, atom_type: str, project: str, tags: list[str],
         "links: []",
     ]
     desc = (description or "").strip() or derive_description(body)
+    if len(desc) > DESCRIPTION_LIMIT:
+        raise ValueError(
+            f"--description is {len(desc)} characters; the limit is {DESCRIPTION_LIMIT}. "
+            "It is the one line recall shows, so state the conclusion and leave the detail to the body."
+        )
     if desc:
         fm_lines.append(f'description: "{desc}"')
     if pnl_impact is not None:
@@ -152,10 +160,17 @@ def main():
     else:
         body = args.body
 
-    path = create_atom(args.name, args.type, args.project, tags, body,
-                       args.dir, args.status, args.pnl, args.confidence,
-                       args.description, args.allow_personal)
+    try:
+        path = create_atom(args.name, args.type, args.project, tags, body,
+                           args.dir, args.status, args.pnl, args.confidence,
+                           args.description, args.allow_personal)
+    except ValueError as exc:
+        parser.error(str(exc))
     print(f"Created: {path.relative_to(VAULT)}")
+    words = len(body.split())
+    if args.type == "event" and words > EVENT_BODY_WORDS:
+        print(f"Note: body is {words} words; event atoms are meant to stay under "
+              f"{EVENT_BODY_WORDS}. Long detail belongs in reference/.", file=sys.stderr)
 
 
 if __name__ == "__main__":

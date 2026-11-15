@@ -39,6 +39,36 @@ def verify_batched(v, paths):
     finally: checkpoint.VAULT=original
     return verified,unchecked,errors
 
+# Size limits from the write protocol. Reported on their own line, never as
+# errors or routing items: an oversized note is still correct and still found,
+# it is just expensive to load and easy to contradict.
+STATE_WORDS=3000
+DESCRIPTION_CHARS=160
+EVENT_BODY_WORDS=200
+
+def budgets(v, indexed, project_filter=None):
+    """Active notes over the protocol's size limits, worst first."""
+    over={'state':[],'description':[],'event':[],'superseded':[]}
+    for rel,note in indexed.items():
+        if project_filter and note.get('project')!=project_filter: continue
+        status=note.get('status')
+        if status=='active' and len(note.get('description') or '')>DESCRIPTION_CHARS:
+            over['description'].append((len(note['description']),rel))
+        sized=status=='active' and (rel.startswith('state/') or
+                                    (rel.startswith('atoms/') and note.get('type')=='event'))
+        if not sized and status!='superseded': continue
+        try: text=(v/rel).read_text(encoding='utf-8',errors='replace')
+        except OSError: continue
+        if status=='superseded':
+            if 'superseded_by' not in parse_frontmatter(text): over['superseded'].append((0,rel))
+            continue
+        end=text.find('\n---',3) if text.startswith('---') else -1
+        words=len((text[end+4:] if end!=-1 else text).split())
+        if rel.startswith('state/'):
+            if words>STATE_WORDS: over['state'].append((words,rel))
+        elif words>EVENT_BODY_WORDS: over['event'].append((words,rel))
+    return {k:sorted(rows,reverse=True) for k,rows in over.items()}
+
 def inspect(vault=None, project_filter=None, verify_hashes=False):
     v=vault or get_vault_path()
     manifest=json.loads((v/'index/manifest.json').read_text(encoding='utf-8'))
@@ -78,6 +108,7 @@ def inspect(vault=None, project_filter=None, verify_hashes=False):
     verified,unchecked,hash_errors=verify_batched(v,targets)
     errors.extend(hash_errors)
     return {'errors':errors,'warnings':warnings,'notes':len(indexed),
+            'budgets':budgets(v,indexed,project_filter),
             'mapped_active_notes':len(linked_hashes),'linked_hashes':linked_hashes,
             'hashed':verify_hashes,'targeted':len(targets),
             'verified':verified,'unchecked':unchecked}
@@ -104,8 +135,19 @@ def main():
           f"{scope}.")
     if result['unchecked']:
         print(f"INCOMPLETE {result['unchecked']} notes were not hash-checked; batches stop at the first bad path.")
+    over=result['budgets']
+    print(f"Size: {len(over['state'])} state documents over {STATE_WORDS} words; "
+          f"{len(over['description'])} descriptions over {DESCRIPTION_CHARS} characters; "
+          f"{len(over['event'])} event atoms over {EVENT_BODY_WORDS} words; "
+          f"{len(over['superseded'])} superseded notes without superseded_by.")
+    # State documents are read first on every visit to a project, so they are
+    # always named. The other three are long lists and wait for --detail.
+    for words,rel in over['state']: print(f'OVERSIZE {words} words: {rel}')
     for error in result['errors']: print('ERROR '+error)
     if args.detail:
+        for size,rel in over['description']: print(f'LONG-DESCRIPTION {size} chars: {rel}')
+        for size,rel in over['event']: print(f'LONG-EVENT {size} words: {rel}')
+        for _,rel in over['superseded']: print(f'NO-REPLACEMENT-LINK {rel}')
         for warning in result['warnings']: print('REVIEW '+warning)
     elif result['warnings']: print('Use --detail; unmapped historical notes are not silently certified as current.')
     return 1 if result['errors'] else 0
