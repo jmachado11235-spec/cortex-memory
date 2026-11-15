@@ -36,17 +36,28 @@ cheapest first and stop as soon as you have what you need.
   the old one: an agent reading tomorrow must not find "still open" anywhere active.
 - **Supersede, don't accumulate.** When a note is replaced, set the old one's
   `status: superseded` and add `superseded_by: <path of the new note>`.
+- **Keep state files short: 3,000 words at most.** A state file says what is true now.
+  Dated history, build logs and long procedures go in a `reference/` note, listed at the
+  top of the state file under a "Detail documents" heading with one line saying when to
+  open it. When a save would push a state file over the limit, move the detail out
+  word for word instead of stacking another dated section. `cortex.health` names any
+  state file over the limit.
 - **Resolved stays resolved.** A closed issue gets a dated line in the state file
   ("Resolved 2026-11-06: ..."). Never raise it again unless new evidence appears; if it does,
   say what is new.
 - New event notes go in `atoms/` with `python -m cortex.atom_writer --name ... --type ... --project ... --description "..." --body "..."`.
-  Put the conclusion in the first sentence. Keep it under 200 words.
+  Put the conclusion in the first sentence. Keep it under 200 words. The description is the
+  one line search shows: 160 characters at most (a longer one is rejected).
 - Link every new note from its project's map in `_moc/`.
 - Always rebuild after writing: `python -m cortex.index_builder`. A note is not findable until then.
   Then `python -m cortex.health` should report 0 errors.
 - If the Stop hook gives you a checkpoint token, finish with the exact
   `python -m cortex.checkpoint acknowledge --token ... --files ...` command it shows
   (or `--no-change "reason"` if nothing durable happened). Never write filler notes.
+- **History is in git, if the vault is a git repository.** Each acknowledged turn is then
+  committed and the receipt prints the commit. To see or recover an earlier version of a
+  note: `git -C <path>/my-vault log -p -- <note path>`. Never reset or rewrite that history.
+  `git history NOT updated` in a receipt means the save worked and the snapshot did not; say so.
 - If the user asked for a review only / no changes, write nothing.
 
 ## Folder map

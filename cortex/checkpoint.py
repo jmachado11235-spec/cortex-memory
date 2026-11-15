@@ -10,6 +10,7 @@ import os
 import re
 import shutil
 import sqlite3
+import subprocess
 import sys
 import time
 import uuid
@@ -234,7 +235,41 @@ def acknowledge(token, files=None, no_change=None):
     receipt['verified_at']=time.time()
     request['receipt']=receipt
     atomic_json(p,request)
-    return receipt
+    commit=commit_history(f"checkpoint {token[:8]} {receipt['kind']}: "
+                          +(', '.join(files) if files else no_change)[:200])
+    return {**receipt,'commit':commit} if commit else receipt
+
+def commit_history(message):
+    """Snapshot the Cortex folder into its local git history. Never fatal.
+
+    The protocol tells agents to REPLACE a contradicted claim, so a wrong rewrite
+    destroys the old text and the daily backup keeps only three copies. One commit
+    per acknowledged turn makes every version recoverable (`git log -p -- <file>`).
+    The receipt is already written when this runs: a failed commit is reported,
+    never raised.
+
+    Which repo: the vault's own (`git init` inside the vault), else the folder
+    above it when that repo tracks the vault. A parent repo that ignores the vault
+    is the engine's own clone and is left alone - committing there would record
+    engine edits and none of the memory. A repo any further up never counts, so a
+    test vault sitting inside someone else's repo cannot commit there.
+    """
+    try:
+        root=VAULT
+        if not (root/'.git').is_dir():
+            root=VAULT.parent
+            if not (root/'.git').is_dir(): return None
+            # check-ignore: 0 = ignored, 1 = tracked.
+            if subprocess.run(['git','-C',str(root),'check-ignore','-q',VAULT.name],
+                              capture_output=True,timeout=60).returncode!=1: return None
+        git=['git','-C',str(root)]
+        subprocess.run(git+['add','-A'],check=True,capture_output=True,timeout=60)
+        if subprocess.run(git+['diff','--cached','--quiet'],timeout=60).returncode==0: return None
+        subprocess.run(git+['commit','-q','-m',message],check=True,capture_output=True,timeout=60)
+        return subprocess.run(git+['rev-parse','--short','HEAD'],check=True,capture_output=True,
+                              text=True,timeout=60).stdout.strip()
+    except (OSError,subprocess.SubprocessError) as exc:
+        return f'git history NOT updated: {exc}'
 
 def checkpoint_prompt(request):
     # Two lines on purpose. Everything cut from here is the Write protocol in CLAUDE.md, restated

@@ -18,6 +18,8 @@ forgetting what it already settled — the "we fixed that yesterday, why are you
 | Review-only detection | "Look but don't change anything" requests write nothing to memory. |
 | Raw transcript archive | One recovery copy of each session transcript in `my-vault/session-archive/`. |
 | Health check | `python -m cortex.health` finds broken links, notes missing from the index, and unmapped notes. |
+| History of every save | If the vault is a git repository, each verified save is committed. The protocol tells the agent to replace outdated claims, so this is what lets you get the old text back after a wrong rewrite. |
+| Size limits | The health check names any current-state file over 3,000 words, and counts over-long descriptions and notes. A state file that grows into a changelog is expensive to load and easy to contradict. |
 
 ## Set up with Claude Code (about 10 minutes)
 
@@ -29,7 +31,12 @@ cd cortex-memory
 cp -r templates/vault my-vault        # your private memory; git ignores it
 python -m cortex.index_builder        # builds the indexes
 python hooks/install_claude_hooks.py  # adds the hooks to ~/.claude/settings.json
+git -C my-vault init                  # optional: keeps a history of every save
 ```
+
+The last line makes your vault its own local git repository, separate from this one and
+never pushed anywhere. Each verified save then becomes a commit, and
+`git -C my-vault log -p -- <note path>` shows every earlier version of a note.
 
 Restart Claude Code and approve the new hooks in `/hooks`. Then edit `my-vault/cortex.toml`
 (your project names), `my-vault/CONTEXT.md` and `my-vault/state/` for your own projects.
